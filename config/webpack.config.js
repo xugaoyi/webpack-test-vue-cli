@@ -7,6 +7,9 @@ const CssMinimizerPlugin = require("css-minimizer-webpack-plugin"); // 压缩css
 const TerserPlugin = require("terser-webpack-plugin"); // 压缩js
 const CopyPlugin = require("copy-webpack-plugin"); // 复制文件 (复制public下的文件到dist目录)
 const { VueLoaderPlugin } = require("vue-loader");
+// const AutoImport = require("unplugin-auto-import/webpack"); // 自动导入API
+// const Components = require("unplugin-vue-components/webpack"); // 自动导入组件
+// const { ElementPlusResolver } = require("unplugin-vue-components/resolvers"); // 自动导入ElementPlus组件的解析器
 
 // 是否为生产环境
 const isProduction = process.env.NODE_ENV === "production";
@@ -91,6 +94,13 @@ module.exports = {
       {
         test: /\.vue$/,
         loader: "vue-loader",
+        options: {
+          // 缓存vue-loader编译结果
+          cacheDirectory: path.resolve(
+            __dirname,
+            "../node_modules/.cache/vue-loader"
+          ),
+        },
       },
     ],
   },
@@ -137,12 +147,38 @@ module.exports = {
       __VUE_PROD_DEVTOOLS__: false, // 生产环境是否使用开发工具
       __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false, // 生产环境是否显示 hydration 不匹配的详细信息
     }),
+    // // 自动导入ElementPlus相关API
+    // AutoImport({
+    //   resolvers: [ElementPlusResolver()],
+    // }),
+    // // 自动导入ElementPlus组件
+    // Components({
+    //   resolvers: [ElementPlusResolver()],
+    // }),
   ].filter(Boolean),
   mode: isProduction ? "production" : "development",
   devtool: isProduction ? "source-map" : "cheap-module-source-map",
   optimization: {
     splitChunks: {
       chunks: "all",
+      // 拆分node_modules下的第三方库
+      cacheGroups: {
+        vue: {
+          test: /[\\/]node_modules[\\/]vue(.*)?[\\/]/,
+          name: "vue-chunk",
+          priority: 40,
+        },
+        elementPlus: {
+          test: /[\\/]node_modules[\\/]element-plus[\\/]/,
+          name: "element-plus-chunk",
+          priority: 30,
+        },
+        libs: {
+          test: /[\\/]node_modules[\\/]/,
+          name: "libs-chunk",
+          priority: 20,
+        },
+      },
     },
     runtimeChunk: {
       name: (entrypoint) => `runtime-${entrypoint.name}`,
@@ -170,4 +206,6 @@ module.exports = {
     hot: true,
     historyApiFallback: true,
   },
+
+  performance: false, // 关闭性能提示
 };
